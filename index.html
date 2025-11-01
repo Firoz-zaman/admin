@@ -53,7 +53,7 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
         }
 
@@ -68,6 +68,12 @@
         h1 {
             font-size: var(--font-size-2xl);
             margin-bottom: var(--space-8);
+            color: var(--color-text);
+        }
+
+        h2 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--space-12);
             color: var(--color-text);
         }
 
@@ -162,6 +168,52 @@
             overflow-x: auto;
             margin-top: var(--space-8);
         }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: var(--space-16);
+        }
+
+        th, td {
+            padding: var(--space-12);
+            text-align: left;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        th {
+            background-color: rgba(var(--color-brown-600-rgb), 0.05);
+            font-weight: 600;
+            font-size: var(--font-size-base);
+        }
+
+        tr:hover {
+            background-color: rgba(var(--color-brown-600-rgb), 0.02);
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--color-text-secondary);
+            padding: var(--space-24);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: var(--radius-base);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-admin {
+            background-color: rgba(var(--color-teal-500-rgb), 0.2);
+            color: var(--color-primary);
+        }
+
+        .badge-member {
+            background-color: rgba(98, 108, 113, 0.1);
+            color: var(--color-text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -189,8 +241,18 @@
             <div id="message" class="message"></div>
         </div>
 
+        <!-- NEW: Members List Card -->
         <div class="card">
-            <h2 style="font-size: var(--font-size-lg); margin-bottom: var(--space-12);">SQL Query</h2>
+            <h2>Registered Members</h2>
+            <p class="subtitle">All users who have signed up</p>
+            
+            <div id="membersContainer" class="loading">
+                Loading members...
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>SQL Query</h2>
             <div class="code-block">
 UPDATE profiles 
 SET role = 'admin' 
@@ -200,13 +262,57 @@ WHERE email = 'user@example.com';
     </div>
 
     <script>
-        // Replace with your Vercel API URL after deployment
-        const API_URL = 'https://admin-umber-eight.vercel.app/api/make-admin.js';
+        const API_URL = 'https://admin-umber-eight.vercel.app/api/make-admin';
+        const GET_MEMBERS_URL = 'https://admin-umber-eight.vercel.app/api/get-members';
 
         const form = document.getElementById('adminForm');
         const messageDiv = document.getElementById('message');
         const submitBtn = document.getElementById('submitBtn');
+        const membersContainer = document.getElementById('membersContainer');
 
+        // Fetch and display members on page load
+        async function loadMembers() {
+            try {
+                const response = await fetch(GET_MEMBERS_URL);
+                const data = await response.json();
+
+                if (response.ok && data.members && data.members.length > 0) {
+                    displayMembers(data.members);
+                } else {
+                    membersContainer.innerHTML = '<p>No members found</p>';
+                }
+            } catch (error) {
+                membersContainer.innerHTML = `<p style="color: var(--color-error);">Error loading members: ${error.message}</p>`;
+            }
+        }
+
+        function displayMembers(members) {
+            const tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${members.map(member => `
+                            <tr>
+                                <td>${member.email}</td>
+                                <td>
+                                    <span class="badge ${member.role === 'admin' ? 'badge-admin' : 'badge-member'}">
+                                        ${member.role || 'member'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            membersContainer.innerHTML = tableHTML;
+        }
+
+        // Make admin form submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -234,6 +340,8 @@ WHERE email = 'user@example.com';
                 if (response.ok) {
                     showMessage(data.message, 'success');
                     document.getElementById('userEmail').value = '';
+                    // Reload members list
+                    loadMembers();
                 } else {
                     showMessage(`Error: ${data.error}`, 'error');
                 }
@@ -254,6 +362,9 @@ WHERE email = 'user@example.com';
                 messageDiv.style.display = 'none';
             }, 5000);
         }
+
+        // Load members when page loads
+        loadMembers();
     </script>
 </body>
 </html>
